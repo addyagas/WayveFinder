@@ -1,72 +1,141 @@
-
-//////////////////////
-// CHATGPT CODE - TESTING ONLY
-
 const express = require('express');
+const session = require('express-session');
 const axios = require('axios');
+const crypto = require('crypto');
+const path = require('path');
+const bodyParser = require('body-parser');
+
+const CLIENT_ID = 'ac2f2d498d0145ada68b8db0ff357943';
+const CLIENT_SECRET = '31914cd9cbdf47e9aff3da89ae8c4edb';
+const REDIRECT_URI = 'http://localhost:8888/callback'; // Your redirect URI
+
 const app = express();
+const port = 8888;
 
-// Serve static files (like the HTML page) from the 'public' directory
-app.use(express.static('public'));
+// Middleware to parse JSON requests
+app.use(bodyParser.json());
 
-// Serve the index.html page when visiting the root URL
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
+// Initialize session middleware
+app.use(session({
+    secret: 'your_session_secret',
+    resave: false,
+    saveUninitialized: true,
+}));
 
-// Endpoint to get the song data from Spotify
-app.post('/get_info', async (req, res) => {
-    const spotifyLink = req.body.spotifyLink;  // Get the Spotify URL from the request
+// Serve static files (e.g., HTML, CSS, JS for the front end)
+app.use(express.static(path.join(__dirname, 'public')));
 
-    // Extract track ID from the Spotify URL (assuming it's a Spotify track link)
-    const trackId = extractTrackId(spotifyLink);
-
-    // Fetch track details and features from Spotify API
-    const trackData = await fetchSpotifyData(trackId);
-
-    res.json(trackData);
-});
-
-// Start the server on port 5000
-app.listen(5000, () => {
-    console.log('Server is running on http://localhost:5000');
-});
-
-// Function to extract track ID from the Spotify URL
-function extractTrackId(spotifyLink) {
-    // Example Spotify track URL: https://open.spotify.com/track/{track_id}
-    const regex = /https:\/\/open.spotify.com\/track\/([a-zA-Z0-9]+)\?/;
-    const match = spotifyLink.match(regex);
-    return match ? match[1] : null;
+// Function to generate the code verifier
+function generateCodeVerifier() {
+    return crypto.randomBytes(32).toString('base64url');
 }
 
-// Function to fetch track details and audio features from Spotify API
-async function fetchSpotifyData(trackId) {
-    // Spotify API endpoint to get track details
-    const trackUrl = `https://api.spotify.com/v1/tracks/${trackId}`;
-    const featuresUrl = `https://api.spotify.com/v1/audio-features/${trackId}`;
+// Function to generate the code challenge
+function generateCodeChallenge(codeVerifier) {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('sha256');
+        hash.update(codeVerifier);
+        const codeChallenge = hash.digest('base64url');
+        resolve(codeChallenge);
+    });
+}
+
+// Route to serve the front page with login button
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Route to handle login and redirect to Spotify's login page
+app.get('/login', async (req, res) => {
+    console.log("Login route hit"); // Add a log to see if this is hit
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    req.session.codeVerifier = codeVerifier;
+
+    const scope = 'user-library-read user-top-read';
+    const authorizeUrl = `https://accounts.spotify.com/authorize?${new URLSearchParams({
+        client_id: CLIENT_ID,
+        response_type: 'code',
+        redirect_uri: REDIRECT_URI,
+        scope: scope,
+        code_challenge_method: 'S256',
+        code_challenge: codeChallenge,
+    }).toString()}`;
+
+    console.log("Redirecting to Spotify"); // Log before redirect
+    res.redirect(authorizeUrl);
+});
+
+// Route to handle Spotify's redirect and exchange the code for tokens
+app.get('/callback', async (req, res) => {
+    const code = req.query.code;
+    const codeVerifier = req.session.codeVerifier;
 
     try {
-        const trackResponse = await axios.get(trackUrl, {
-            headers: { Authorization: `Bearer BQCPOG8v7IrnfGAcUpOAm4JOjjNG_j3wdMv3X-WX-cS9cg6Cv57pwvqmMIWoapN0Nv0scyn5mIqZMifevblIohVgwayP6sP6f79Z5E2BHONLGgxvehMVkdF5cpDtdoeBvcZLNnN-UJc` }
-        });
-        const featuresResponse = await axios.get(featuresUrl, {
-            headers: { Authorization: `Bearer BQCPOG8v7IrnfGAcUpOAm4JOjjNG_j3wdMv3X-WX-cS9cg6Cv57pwvqmMIWoapN0Nv0scyn5mIqZMifevblIohVgwayP6sP6f79Z5E2BHONLGgxvehMVkdF5cpDtdoeBvcZLNnN-UJc` }
+        const response = await axios.post('https://accounts.spotify.com/api/token', new URLSearchParams({
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            code: code,
+            redirect_uri: REDIRECT_URI,
+            grant_type: 'authorization_code',
+            code_verifier: codeVerifier,
+        }).toString());
+
+        req.session.accessToken = response.data.access_token;
+        req.session.refreshToken = response.data.refresh_token;
+
+        res.redirect('/'); // Redirect to the homepage after login
+    } catch (error) {
+        console.error('Error exchanging code for token:', error);
+        res.send('Error during login');
+    }
+});
+
+// Route to fetch song data from Spotify API
+app.post('/get_info', async (req, res) => {
+    const spotifyLink = req.body.spotifyLink;
+    const trackId = spotifyLink.split('/').pop(); // Extract the track ID from the URL
+
+    if (!spotifyLink || !req.session.accessToken) {
+        return res.status(400).send({ error: 'Missing song URL or access token' });
+    }
+
+    try {
+        // Fetch song data from Spotify
+        const response = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+            headers: {
+                'Authorization': `Bearer ${req.session.accessToken}`,
+            },
         });
 
-        return {
-            trackName: trackResponse.data.name,
-            artist: trackResponse.data.artists[0].name,
-            album: trackResponse.data.album.name,
-            bpm: featuresResponse.data.tempo,
-            key: featuresResponse.data.key,
-            loudness: featuresResponse.data.loudness,
-            danceability: featuresResponse.data.danceability,
-            energy: featuresResponse.data.energy,
-            valence: featuresResponse.data.valence
+        // Fetch audio features of the song
+        const audioFeatures = await axios.get(`https://api.spotify.com/v1/audio-features/${trackId}`, {
+            headers: {
+                'Authorization': `Bearer ${req.session.accessToken}`,
+            },
+        });
+
+        // Combine song data and audio features
+        const songInfo = {
+            name: response.data.name,
+            artist: response.data.artists[0].name,
+            bpm: audioFeatures.data.tempo,
+            key: audioFeatures.data.key,
+            loudness: audioFeatures.data.loudness,
+            danceability: audioFeatures.data.danceability,
+            energy: audioFeatures.data.energy,
+            valence: audioFeatures.data.valence,
         };
+
+        // Send song data and audio features back to the frontend
+        res.json(songInfo);
     } catch (error) {
-        console.error('Error fetching data from Spotify:', error);
-        return null;
+        console.error('Error fetching song data:', error);
+        res.status(500).send({ error: 'Error fetching song data' });
     }
-}
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`App listening at http://localhost:${port}`);
+});
