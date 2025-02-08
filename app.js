@@ -37,7 +37,9 @@ app.get('/login', async (req, res) => {
         const codeChallenge = await generateCodeChallenge(codeVerifier);
         req.session.codeVerifier = codeVerifier;
 
-        const scope = 'user-library-read user-top-read playlist-read-private';
+        // define scope of what we need/want
+        const scope = 'playlist-read-private user-library-read user-top-read streaming';
+
         const authorizeUrl = `https://accounts.spotify.com/authorize?${new URLSearchParams({
             client_id: CLIENT_ID,
             response_type: 'code',
@@ -86,6 +88,8 @@ app.get('/callback', async (req, res) => {
 });
 
 // Route to fetch song data from Spotify API
+// Route to fetch song data from Spotify API
+// Backend (Node.js)
 app.post('/get_info', async (req, res) => {
     const spotifyLink = req.body.spotifyLink;
     const trackId = spotifyLink.split('/').pop(); // Extract the track ID from the URL
@@ -105,17 +109,12 @@ app.post('/get_info', async (req, res) => {
             await refreshAccessToken(req);
         }
 
-        // Debugging log before making the request
-        console.log('Making request to Spotify API to fetch song data...');
-
         // Fetch song data from Spotify
         const response = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
             headers: {
                 'Authorization': `Bearer ${req.session.accessToken}`,
             },
         });
-
-        console.log('Song data response:', response.data); // Debugging log
 
         // Fetch audio features of the song
         const audioFeatures = await axios.get(`https://api.spotify.com/v1/audio-features/${trackId}`, {
@@ -124,7 +123,9 @@ app.post('/get_info', async (req, res) => {
             },
         });
 
-        console.log('Audio features response:', audioFeatures.data); // Debugging log
+        if (!audioFeatures.data) {
+            return res.status(500).send({ error: 'Audio features not available' });
+        }
 
         // Combine song data and audio features
         const songInfo = {
@@ -140,11 +141,13 @@ app.post('/get_info', async (req, res) => {
 
         // Send song data and audio features back to the frontend
         res.json(songInfo);
+
     } catch (error) {
         console.error('Error fetching song data:', error.response ? error.response.data : error.message); // Detailed error logging
         res.status(500).send({ error: 'Error fetching song data' });
     }
 });
+
 
 // Helper function to refresh access token
 async function refreshAccessToken(req) {
