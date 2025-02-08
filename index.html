@@ -3,82 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WayveFinder</title>
-    <style>
-        body {
-            font-family: Trebuchet MS, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #000000;
-            text-align: center;
-        }
-        header {
-            background: #cd0b76;
-            color: #7d31b8;
-            padding: 15px;
-            font-size: 24px;
-        }
-        main {
-            padding: 20px;
-        }
-        footer {
-            background: #7d31b8;
-            color: #cd0b76;
-            padding: 10px;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-    </style>
+    <title>Wayve Finder</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Get Spotify Song Info</h1>
+    <h1>Wayve Finder</h1>
+
+    <!-- Spotify Login Button -->
+    <a href="http://localhost:8888/login" class="login-btn">
+        <button>Login with Spotify</button>
+    </a>
+
     <form id="spotify-form">
-        <label for="spotify-link">Enter Spotify Link:</label>
+        <label for="spotify-link">Enter Spotify Track ID:</label>
         <input type="text" id="spotify-link" name="spotify-link" required>
-        <button type="submit">Get Info</button>
+        <button type="submit">Find Your WayveLength...</button>
     </form>
 
     <div id="track-info"></div>
 
-    <!-- getting data from the API -->
     <script>
         document.getElementById('spotify-form').addEventListener('submit', async function (event) {
-            event.preventDefault();
+            event.preventDefault();  // Prevent form from submitting the traditional way
 
             const spotifyLink = document.getElementById('spotify-link').value;
+            const trackInfoDiv = document.getElementById('track-info');
+
+            if (!spotifyLink) {
+                trackInfoDiv.innerHTML = 'Please enter a valid Spotify track link.';
+                return;
+            }
+
+            // POST request to the backend
             const response = await fetch('/get_info', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ spotifyLink: spotifyLink })
+                body: JSON.stringify({ spotifyLink: spotifyLink }),
             });
 
             const data = await response.json();
-            if (data) {
-                document.getElementById('track-info').innerHTML = `
-                    <h3>Track Info:</h3>
-                    <p><strong>Song:</strong> ${data.trackName}</p>
-                    <p><strong>Artist:</strong> ${data.artist}</p>
-                    <p><strong>Album:</strong> ${data.album}</p>
-                    <h3>Audio Features:</h3>
+
+            if (data.error) {
+                trackInfoDiv.innerHTML = `Error: ${data.error}`;
+            } else {
+                // Display song information
+                trackInfoDiv.innerHTML = `
+                    <h3>${data.name} by ${data.artist}</h3>
                     <p><strong>BPM:</strong> ${data.bpm}</p>
                     <p><strong>Key:</strong> ${data.key}</p>
-                    <p><strong>Loudness:</strong> ${data.loudness}</p>
+                    <p><strong>Loudness:</strong> ${data.loudness} dB</p>
                     <p><strong>Danceability:</strong> ${data.danceability}</p>
                     <p><strong>Energy:</strong> ${data.energy}</p>
                     <p><strong>Valence:</strong> ${data.valence}</p>
                 `;
-            } else {
-                document.getElementById('track-info').innerText = 'Error fetching track info.';
             }
         });
     </script>
-
-    <main>
-        <p>Enter a song to find another song which matches your taste! </p>
-    </main>
-    <footer>© 2025 WayveFinder</footer>
 </body>
 </html>
