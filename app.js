@@ -48,10 +48,10 @@ async function fetchSpotifyData(trackId) {
 
     try {
         const trackResponse = await axios.get(trackUrl, {
-            headers: { Authorization: `Bearer BQAlyepbNQAG5rAKcBR7lUxub-45zxW6y2gXaEyduMX_sSg56HRdAKXIGZUZ3CoWCGDT7UTo7Qns3Ufa8RdqcH4xHsBAlZHlj0dRYVGaZ-v4iUyMX5zvgu0vbiIB19AoSJz0JaoFRvk` }
+            headers: { Authorization: `Bearer BQCPOG8v7IrnfGAcUpOAm4JOjjNG_j3wdMv3X-WX-cS9cg6Cv57pwvqmMIWoapN0Nv0scyn5mIqZMifevblIohVgwayP6sP6f79Z5E2BHONLGgxvehMVkdF5cpDtdoeBvcZLNnN-UJc` }
         });
         const featuresResponse = await axios.get(featuresUrl, {
-            headers: { Authorization: `Bearer BQAlyepbNQAG5rAKcBR7lUxub-45zxW6y2gXaEyduMX_sSg56HRdAKXIGZUZ3CoWCGDT7UTo7Qns3Ufa8RdqcH4xHsBAlZHlj0dRYVGaZ-v4iUyMX5zvgu0vbiIB19AoSJz0JaoFRvk` }
+            headers: { Authorization: `Bearer BQCPOG8v7IrnfGAcUpOAm4JOjjNG_j3wdMv3X-WX-cS9cg6Cv57pwvqmMIWoapN0Nv0scyn5mIqZMifevblIohVgwayP6sP6f79Z5E2BHONLGgxvehMVkdF5cpDtdoeBvcZLNnN-UJc` }
         });
 
         return {
