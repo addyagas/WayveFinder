@@ -9,12 +9,12 @@
             font-family: Trebuchet MS, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #004aad;
+            background-color: #000000;
             text-align: center;
         }
         header {
-            background: #38B6FF;
-            color:  #004aad            ;
+            background: #cd0b76;
+            color: #7d31b8;
             padding: 15px;
             font-size: 24px;
         }
@@ -22,8 +22,8 @@
             padding: 20px;
         }
         footer {
-            background: #004aad ;
-            color: #38B6FF;
+            background: #7d31b8;
+            color: #cd0b76;
             padding: 10px;
             position: fixed;
             bottom: 0;
@@ -32,7 +32,50 @@
     </style>
 </head>
 <body>
-    <header>WayveFinder</header>
+    <h1>Get Spotify Song Info</h1>
+    <form id="spotify-form">
+        <label for="spotify-link">Enter Spotify Link:</label>
+        <input type="text" id="spotify-link" name="spotify-link" required>
+        <button type="submit">Get Info</button>
+    </form>
+
+    <div id="track-info"></div>
+
+    <!-- getting data from the API -->
+    <script>
+        document.getElementById('spotify-form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const spotifyLink = document.getElementById('spotify-link').value;
+            const response = await fetch('/get_info', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ spotifyLink: spotifyLink })
+            });
+
+            const data = await response.json();
+            if (data) {
+                document.getElementById('track-info').innerHTML = `
+                    <h3>Track Info:</h3>
+                    <p><strong>Song:</strong> ${data.trackName}</p>
+                    <p><strong>Artist:</strong> ${data.artist}</p>
+                    <p><strong>Album:</strong> ${data.album}</p>
+                    <h3>Audio Features:</h3>
+                    <p><strong>BPM:</strong> ${data.bpm}</p>
+                    <p><strong>Key:</strong> ${data.key}</p>
+                    <p><strong>Loudness:</strong> ${data.loudness}</p>
+                    <p><strong>Danceability:</strong> ${data.danceability}</p>
+                    <p><strong>Energy:</strong> ${data.energy}</p>
+                    <p><strong>Valence:</strong> ${data.valence}</p>
+                `;
+            } else {
+                document.getElementById('track-info').innerText = 'Error fetching track info.';
+            }
+        });
+    </script>
+
     <main>
         <p>Enter a song to find another song which matches your taste! </p>
     </main>
