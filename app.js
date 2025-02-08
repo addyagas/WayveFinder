@@ -88,7 +88,6 @@ app.get('/callback', async (req, res) => {
 });
 
 // Route to fetch song data from Spotify API
-// Route to fetch song data from Spotify API
 // Backend (Node.js)
 app.post('/get_info', async (req, res) => {
     const spotifyLink = req.body.spotifyLink;
@@ -116,12 +115,16 @@ app.post('/get_info', async (req, res) => {
             },
         });
 
+        console.log(response);
+        console.log();
+
         // Fetch audio features of the song
         const audioFeatures = await axios.get(`https://api.spotify.com/v1/audio-features/${trackId}`, {
             headers: {
                 'Authorization': `Bearer ${req.session.accessToken}`,
             },
         });
+        console.log(audioFeatures);
 
         if (!audioFeatures.data) {
             return res.status(500).send({ error: 'Audio features not available' });
